@@ -1,21 +1,37 @@
-using System.Collections;
+Ôªøusing System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-    [Header("MovimentaÁ„o Base")]
+    public enum TipoClasse
+    {
+        Guerreiro,
+        Ranger,
+        Mago,
+        Druida
+    }
+
+    [Header("Classe Ativa")]
+    public TipoClasse classeAtual = TipoClasse.Guerreiro;
+
+    [Header("Movimenta√ß√£o Base")]
     public float velocidadeAndar = 12f;
     public float gravity = -20f;
     public float jumpHeight = 2.5f;
 
-    [Header("Habilidade: Investida (Estilo Reinhardt)")]
+    [Header("Habilidades do Guerreiro (Investida)")]
     public float velocidadeInvestida = 24f;    // Velocidade do atropelamento
-    public float duracaoInvestida = 3f;        // Tempo m·ximo correndo
+    public float duracaoInvestida = 3f;        // Tempo m√°ximo correndo
     public float danoBatidaParede = 50f;       // Dano ao esmagar o alvo na parede
-    public float distanciaEmpurrao = 1.5f;     // Dist‚ncia que o inimigo fica preso ‡ sua frente
+    public float distanciaEmpurrao = 1.5f;     // Dist√¢ncia que o inimigo fica preso √† sua frente
 
-    [Header("C‚mera")]
+    [Header("Habilidades do Ranger (Corrida e Escalada)")]
+    public float velocidadeSprint = 18f;       // Velocidade de corrida r√°pida ao segurar Shift
+    public float velocidadeEscalada = 8f;      // Velocidade subindo a parede
+    public float distanciaChecagemParede = 0.9f;// Dist√¢ncia do raio para detectar a parede
+
+    [Header("C√¢mera")]
     public float mouseSensitivity = 300f;
     public Transform playerCamera;
 
@@ -24,20 +40,29 @@ public class PlayerController : MonoBehaviour
     private bool isGrounded;
     private float xRotation = 0f;
 
-    // Vari·veis de controle da Investida
+    // Vari√°veis de controle do Guerreiro (Investida)
     private bool emInvestida = false;
     private float tempoFimInvestida = 0f;
     private GameObject inimigoPrendido = null;
 
+    // Vari√°veis de controle do Ranger (Escalada)
+    private bool escalandoParede = false;
+
     void Start()
     {
         controller = GetComponent<CharacterController>();
-        //Cursor.lockState = CursorLockMode.Locked;
+    }
+
+    public void DefinirClasse(TipoClasse novaClasse)
+    {
+        classeAtual = novaClasse;
+        PararInvestida();
+        escalandoParede = false;
     }
 
     void Update()
     {
-        // --- 1. VIS√O DO MOUSE ---
+        // --- 1. VIS√ÉO DO MOUSE ---
         float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
         float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
 
@@ -47,81 +72,127 @@ public class PlayerController : MonoBehaviour
         playerCamera.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
         transform.Rotate(Vector3.up * mouseX);
 
-        // --- 2. VERIFICA«√O DE CH√O ---
+        // --- 2. VERIFICA√á√ÉO DE CH√ÉO ---
         isGrounded = controller.isGrounded;
-        if (isGrounded && velocity.y < 0)
+        if (isGrounded && velocity.y < 0 && !escalandoParede)
         {
             velocity.y = -2f;
         }
 
-        // --- 3. ATIVA«√O DA INVESTIDA (Shift) ---
-        if (Input.GetKeyDown(KeyCode.LeftShift) && !emInvestida)
-        {
-            emInvestida = true;
-            tempoFimInvestida = Time.time + duracaoInvestida;
-        }
-
-        // --- 4. CONTROLE DE VELOCIDADE E TEMPO ---
+        // --- 3. CONTROLE ESPEC√çFICO DE CADA CLASSE ---
         float velocidadeAtual = velocidadeAndar;
-        if (emInvestida)
-        {
-            velocidadeAtual = velocidadeInvestida;
-
-            // Se o tempo acabou, para de correr
-            if (Time.time >= tempoFimInvestida)
-            {
-                PararInvestida();
-            }
-            // Se ainda est· correndo e tem um inimigo preso, arrasta ele!
-            else if (inimigoPrendido != null)
-            {
-                ArrastarInimigo();
-            }
-        }
-
-        // --- 5. MOVIMENTA«√O (WASD) ---
         float x = Input.GetAxis("Horizontal");
         float z = Input.GetAxis("Vertical");
 
+        if (classeAtual == TipoClasse.Guerreiro)
+        {
+            // Ativa√ß√£o da Investida do Guerreiro (Shift)
+            if (Input.GetKeyDown(KeyCode.LeftShift) && !emInvestida)
+            {
+                emInvestida = true;
+                tempoFimInvestida = Time.time + duracaoInvestida;
+            }
+
+            if (emInvestida)
+            {
+                velocidadeAtual = velocidadeInvestida;
+
+                if (Time.time >= tempoFimInvestida)
+                {
+                    PararInvestida();
+                }
+                else if (inimigoPrendido != null)
+                {
+                    ArrastarInimigo();
+                }
+            }
+        }
+        else if (classeAtual == TipoClasse.Ranger)
+        {
+            // Ranger: Shift ativa Corrida e Escalada de Parede
+            bool segurandoShift = Input.GetKey(KeyCode.LeftShift);
+
+            if (segurandoShift)
+            {
+                velocidadeAtual = velocidadeSprint;
+
+                // Verifica se est√° empurrando para frente contra uma parede
+                if (z > 0.1f && ChecarParedeParaEscalada())
+                {
+                    escalandoParede = true;
+                }
+                else
+                {
+                    escalandoParede = false;
+                }
+            }
+            else
+            {
+                escalandoParede = false;
+            }
+        }
+
+        // --- 4. MOVIMENTA√á√ÉO (WASD) ---
         Vector3 move = transform.right * x + transform.forward * z;
         controller.Move(move * velocidadeAtual * Time.deltaTime);
 
-        // --- 6. PULO ---
-        if (Input.GetButtonDown("Jump") && isGrounded)
+        // --- 5. PULO / ESCALADA / GRAVIDADE ---
+        if (escalandoParede && classeAtual == TipoClasse.Ranger)
         {
-            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            // Sobe continuamente a parede sem gravidade
+            velocity.y = velocidadeEscalada;
+        }
+        else
+        {
+            // Pulo padr√£o
+            if (Input.GetButtonDown("Jump") && isGrounded)
+            {
+                velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            }
+
+            // Aplica gravidade normal
+            velocity.y += gravity * Time.deltaTime;
         }
 
-        // --- 7. APLICA GRAVIDADE ---
-        velocity.y += gravity * Time.deltaTime;
         controller.Move(velocity * Time.deltaTime);
     }
 
-    // --- SISTEMA DE COLIS√O NATIVO DA UNITY ---
-    // Essa funÁ„o È chamada automaticamente quando o jogador "esbarra" em algo
+    // Checa se h√° uma parede vertical na frente do Ranger
+    bool ChecarParedeParaEscalada()
+    {
+        Vector3 origem = transform.position + Vector3.up * 0.8f;
+        RaycastHit hit;
+
+        if (Physics.Raycast(origem, transform.forward, out hit, distanciaChecagemParede))
+        {
+            // Se a superf√≠cie for vertical (parede), a normal do eixo Y √© pr√≥xima de zero
+            if (Mathf.Abs(hit.normal.y) < 0.3f && !hit.collider.isTrigger)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // --- SISTEMA DE COLIS√ÉO DO GUERREIRO ---
     void OnControllerColliderHit(ControllerColliderHit hit)
     {
-        if (!emInvestida) return;
+        if (classeAtual != TipoClasse.Guerreiro || !emInvestida) return;
 
         // 1. CAPTURAR O INIMIGO
-        // Se bateu em um objeto com Vida, e ainda n„o prendemos ninguÈm...
         if (inimigoPrendido == null && hit.gameObject.GetComponent<SistemaDeVida>() != null)
         {
             inimigoPrendido = hit.gameObject;
 
-            // Desliga a fÌsica do inimigo temporariamente para ele n„o brigar com a gente
             Rigidbody rb = inimigoPrendido.GetComponent<Rigidbody>();
             if (rb != null) rb.isKinematic = true;
         }
 
         // 2. ESMAGAR NA PAREDE
-        // Se batermos em algo que n„o È o ch„o (normal reta) e n„o È o inimigo que estamos segurando...
         if (inimigoPrendido != null && hit.gameObject != inimigoPrendido)
         {
-            // Verifica se È uma superfÌcie vertical (Parede) avaliando o eixo Y da batida
             if (Mathf.Abs(hit.normal.y) < 0.1f)
             {
-                // Bateu na parede com o inimigo! Aplica dano e encerra a investida.
                 SistemaDeVida vidaInimigo = inimigoPrendido.GetComponent<SistemaDeVida>();
                 if (vidaInimigo != null)
                 {
@@ -135,15 +206,10 @@ public class PlayerController : MonoBehaviour
 
     void ArrastarInimigo()
     {
-        // Posiciona o inimigo matematicamente exato na frente do jogador
         Vector3 posicaoAlvo = transform.position + (transform.forward * distanciaEmpurrao);
-
-        // MantÈm a altura do inimigo para ele n„o afundar no ch„o
         posicaoAlvo.y = inimigoPrendido.transform.position.y;
-
         inimigoPrendido.transform.position = posicaoAlvo;
 
-        // Se o inimigo morrer no meio do caminho (por exemplo, vocÍ bateu nele com a espada), soltamos ele
         if (inimigoPrendido == null || inimigoPrendido.GetComponent<SistemaDeVida>() == null)
         {
             PararInvestida();
@@ -154,7 +220,6 @@ public class PlayerController : MonoBehaviour
     {
         emInvestida = false;
 
-        // Devolve a fÌsica normal para o inimigo ao solt·-lo
         if (inimigoPrendido != null)
         {
             Rigidbody rb = inimigoPrendido.GetComponent<Rigidbody>();
