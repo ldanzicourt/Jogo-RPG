@@ -1,9 +1,9 @@
-using System.Collections;
+Ôªøusing System.Collections;
 using UnityEngine;
 
 public class AtaqueEspada : MonoBehaviour
 {
-    [Header("ConfiguraÁıes do Golpe (Espada Longa)")]
+    [Header("Configura√ß√µes do Golpe (Espada Longa)")]
     public float tempoAtaque = 0.4f;
     public float anguloCorte = 75f;
     public float tempoEntreAtaques = 0.9f;
@@ -15,9 +15,9 @@ public class AtaqueEspada : MonoBehaviour
     public float forcaKnockback = 15f;
     public Camera cameraJogador;
 
-    [Header("Recursos (B·rbaro)")]
+    [Header("Recursos (Guerreiro)")]
     public float furiaPorAcerto = 20f;
-    public StatusJogador statusJogador; // ReferÍncia ao script do jogador para encher a barra
+    public StatusJogador statusJogador; // Refer√™ncia ao script do jogador para gerenciar a F√∫ria
 
     private bool atacando = false;
     private Quaternion rotacaoInicial;
@@ -31,7 +31,7 @@ public class AtaqueEspada : MonoBehaviour
 
     void Update()
     {
-        // SÛ ataca se n„o estiver no meio de um golpe E se a cadÍncia (cooldown) j· zerou
+        // S√≥ ataca se n√£o estiver no meio de um golpe E se a cad√™ncia (cooldown) j√° zerou
         if (Input.GetButtonDown("Fire1") && !atacando && Time.time >= proximoAtaquePermitido)
         {
             proximoAtaquePermitido = Time.time + tempoEntreAtaques;
@@ -50,28 +50,32 @@ public class AtaqueEspada : MonoBehaviour
 
             if (alvo != null)
             {
-                // Causa dano ao inimigo
-                alvo.ReceberDano(danoDoAtaque);
+                // Verifica se o jogador est√° em f√∫ria m√°xima para dobrar o dano (Modo Berserker)
+                bool emFuria = (statusJogador != null && statusJogador.EstaEmFuriaMaxima());
+                float danoFinal = emFuria ? (danoDoAtaque * 2f) : danoDoAtaque;
 
-                // --- SISTEMA DE F⁄RIA (NOVO) ---
-                // Se o jogador estiver conectado no Inspector, ganha F˙ria!
+                // Causa dano ao inimigo (passando o flag de golpe de f√∫ria para colorir o texto)
+                alvo.ReceberDano(danoFinal, emFuria);
+
+                // --- SISTEMA DE F√öRIA ---
+                // Adiciona f√∫ria ao jogador por acerto e reinicia a contagem de 5s
                 if (statusJogador != null)
                 {
                     statusJogador.GanharFuria(furiaPorAcerto);
                 }
 
-                // --- SISTEMA DE KNOCKBACK CORRIGIDO ---
+                // --- SISTEMA DE KNOCKBACK ---
                 Rigidbody rbInimigo = hit.transform.GetComponent<Rigidbody>();
                 if (rbInimigo != null)
                 {
-                    // Calcula o vetor de direÁ„o (da espada para o inimigo)
+                    // Calcula o vetor de dire√ß√£o (da espada para o inimigo)
                     Vector3 direcaoEmpurrao = hit.transform.position - transform.position;
 
                     // Adiciona um leve solavanco para cima no vetor Y
                     direcaoEmpurrao.y = 0.5f;
                     direcaoEmpurrao.Normalize();
 
-                    // Aplica o impacto contÌnuo e mais suave
+                    // Aplica o impacto cont√≠nuo e mais suave
                     rbInimigo.AddForce(direcaoEmpurrao * forcaKnockback, ForceMode.Force);
                 }
             }

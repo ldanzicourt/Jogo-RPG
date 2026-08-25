@@ -1,4 +1,4 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using UnityEngine.UI;
 
 public class StatusJogador : MonoBehaviour
@@ -8,32 +8,31 @@ public class StatusJogador : MonoBehaviour
     private float vidaAtual;
     public Image imagemBarraVida;
 
-    [Header("Fúria")]
+    [Header("FÃºria")]
     public float furiaMaxima = 100f;
     private float furiaAtual = 0f;
     public Image imagemBarraFuria;
 
-    [Header("Decaimento de Fúria")]
-    public float tempoParaComecarPerder = 3f; // Segundos sem bater antes de perder Fúria
-    public float perdaDeFuriaPorSegundo = 15f;
+    [Header("Decaimento de FÃºria")]
+    public float tempoParaComecarPerder = 5f; // 5 segundos sem bater antes de perder FÃºria
+    public float perdaDeFuriaPorSegundo = 20f; // Esvazia a barra gradualmente (~5s para esvaziar 100%)
     private float tempoUltimoAcerto;
 
     void Start()
     {
         vidaAtual = vidaMaxima;
-        furiaAtual = 0f; // Bárbaro começa calmo
+        furiaAtual = 0f; // Guerreiro comeÃ§a com a barra vazia
         AtualizarBarras();
     }
 
     void Update()
     {
-        // Se a Fúria for maior que zero E já passou o tempo desde o último acerto...
+        // Se houver FÃºria E jÃ¡ passaram 5 segundos sem acertar golpes...
         if (furiaAtual > 0 && Time.time > tempoUltimoAcerto + tempoParaComecarPerder)
         {
-            // Começa a esvaziar a barra gradativamente
+            // Esvazia gradualmente
             furiaAtual -= perdaDeFuriaPorSegundo * Time.deltaTime;
 
-            // Impede que fique negativa
             if (furiaAtual < 0) furiaAtual = 0;
 
             AtualizarBarras();
@@ -44,26 +43,34 @@ public class StatusJogador : MonoBehaviour
     {
         furiaAtual += quantidade;
 
-        // Trava no máximo
+        // Limita ao mÃ¡ximo permitido
         if (furiaAtual > furiaMaxima) furiaAtual = furiaMaxima;
 
-        // Reseta o cronômetro para não perder fúria imediatamente
+        // Reinicia o cronÃ´metro para garantir os 5 segundos sem decaimento a partir deste acerto
         tempoUltimoAcerto = Time.time;
 
         AtualizarBarras();
+    }
+
+    public bool EstaEmFuriaMaxima()
+    {
+        return furiaAtual >= furiaMaxima;
+    }
+
+    public float ObterFuriaAtual()
+    {
+        return furiaAtual;
     }
 
     public void ReceberDano(float quantidade)
     {
         vidaAtual -= quantidade;
 
-        // Bárbaro também ganha um pouquinho de fúria ao apanhar (opcional, como no seu design!)
-        GanharFuria(quantidade / 2);
-
         if (vidaAtual <= 0)
         {
-            Debug.Log("O Bárbaro caiu!");
-            // Futuramente colocamos o Game Over aqui
+            vidaAtual = 0;
+            Debug.Log("O Guerreiro caiu!");
+            // Futuro Game Over
         }
         AtualizarBarras();
     }
