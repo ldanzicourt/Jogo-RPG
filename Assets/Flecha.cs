@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 public class Flecha : MonoBehaviour
 {
@@ -65,7 +65,7 @@ public class Flecha : MonoBehaviour
             Rigidbody rbInimigo = alvo.GetComponent<Rigidbody>();
             if (rbInimigo != null)
             {
-                rbInimigo.AddForce(transform.forward * 8f, ForceMode.Impulse);
+                rbInimigo.AddForce(transform.forward * 1.0f, ForceMode.Impulse);
             }
         }
 

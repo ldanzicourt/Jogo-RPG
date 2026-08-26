@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -30,6 +30,9 @@ public class PlayerController : MonoBehaviour
     public float velocidadeSprint = 18f;       // Velocidade de corrida rápida ao segurar Shift
     public float velocidadeEscalada = 8f;      // Velocidade subindo a parede
     public float distanciaChecagemParede = 0.9f;// Distância do raio para detectar a parede
+
+    [Header("Habilidades do Mago (Salto Etéreo)")]
+    public float distanciaSaltoEtereo = 8.5f;   // Distância do teleporte astral
 
     [Header("Câmera")]
     public float mouseSensitivity = 300f;
@@ -86,6 +89,9 @@ public class PlayerController : MonoBehaviour
 
         if (classeAtual == TipoClasse.Guerreiro)
         {
+            AtaqueEspada ataqueGuerreiro = GetComponentInChildren<AtaqueEspada>();
+            if (ataqueGuerreiro == null) ataqueGuerreiro = GetComponent<AtaqueEspada>();
+
             // Ativação da Investida do Guerreiro (Shift)
             if (Input.GetKeyDown(KeyCode.LeftShift) && !emInvestida)
             {
@@ -104,6 +110,25 @@ public class PlayerController : MonoBehaviour
                 else if (inimigoPrendido != null)
                 {
                     ArrastarInimigo();
+                }
+            }
+            else if (ataqueGuerreiro != null)
+            {
+                if (ataqueGuerreiro.EstaEmFrenesi())
+                {
+                    velocidadeAtual = velocidadeAndar * 1.15f; // Leve aceleração no Frenesi
+                }
+                else
+                {
+                    if (ataqueGuerreiro.EstaEmGuardaBruta())
+                    {
+                        velocidadeAtual *= 0.60f; // -40% de velocidade ao erguer a Guarda Bruta
+                    }
+
+                    if (ataqueGuerreiro.EstaEmExaustao())
+                    {
+                        velocidadeAtual *= 0.70f; // -30% de velocidade durante a Exaustão pós-frenesi
+                    }
                 }
             }
         }
@@ -129,6 +154,14 @@ public class PlayerController : MonoBehaviour
             else
             {
                 escalandoParede = false;
+            }
+        }
+        else if (classeAtual == TipoClasse.Mago)
+        {
+            // Mago: Shift ativa o Salto Etéreo
+            if (Input.GetKeyDown(KeyCode.LeftShift))
+            {
+                ExecutarSaltoEtereo(x, z);
             }
         }
 
@@ -226,5 +259,96 @@ public class PlayerController : MonoBehaviour
             if (rb != null) rb.isKinematic = false;
             inimigoPrendido = null;
         }
+    }
+
+    // --- HABILIDADE DO MAGO: SALTO ETÉREO ---
+    void ExecutarSaltoEtereo(float x, float z)
+    {
+        ControleMago mago = GetComponentInChildren<ControleMago>();
+        if (mago == null) mago = GetComponent<ControleMago>();
+
+        if (mago != null && !mago.PodeUsarSalto())
+        {
+            return;
+        }
+
+        // Determina a direção do salto (se estiver pressionando WASD, salta nessa direção; senão salta para frente)
+        Vector3 direcao = (transform.right * x + transform.forward * z);
+        if (direcao.sqrMagnitude < 0.01f)
+        {
+            direcao = transform.forward;
+        }
+        direcao.y = 0f;
+        direcao.Normalize();
+
+        Vector3 posicaoOrigem = transform.position;
+        Vector3 posicaoDestino = posicaoOrigem + direcao * distanciaSaltoEtereo;
+
+        // Checagem de colisão com paredes sólidas (ignora inimigos, gatilhos e projéteis)
+        RaycastHit[] hits = Physics.RaycastAll(posicaoOrigem + Vector3.up * 0.5f, direcao, distanciaSaltoEtereo);
+        float menorDistanciaParede = distanciaSaltoEtereo;
+
+        foreach (var hit in hits)
+        {
+            if (hit.collider.isTrigger) continue;
+            if (hit.transform.root == transform.root) continue;
+            if (hit.collider.GetComponent<SistemaDeVida>() != null || hit.collider.GetComponentInParent<SistemaDeVida>() != null) continue; // Atravessa inimigos!
+
+            if (hit.distance < menorDistanciaParede && hit.distance > 0.4f)
+            {
+                menorDistanciaParede = hit.distance;
+                posicaoDestino = posicaoOrigem + direcao * (menorDistanciaParede - 0.5f);
+            }
+        }
+
+        // Efeito visual no ponto de saída
+        CriarEfeitoFlashAstral(posicaoOrigem + Vector3.up * 0.8f);
+
+        // Teleporte imediato (atravessando colisores de inimigos)
+        if (controller != null) controller.enabled = false;
+        transform.position = posicaoDestino;
+        if (controller != null) controller.enabled = true;
+
+        // Efeito visual no ponto de chegada
+        CriarEfeitoFlashAstral(posicaoDestino + Vector3.up * 0.8f);
+
+        if (mago != null)
+        {
+            mago.DispararCooldownSalto();
+        }
+    }
+
+    void CriarEfeitoFlashAstral(Vector3 pos)
+    {
+        GameObject flash = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        flash.name = "FlashAstral";
+        flash.transform.position = pos;
+        flash.transform.localScale = Vector3.one * 0.4f;
+
+        Collider c = flash.GetComponent<Collider>();
+        if (c != null) Destroy(c);
+
+        Renderer r = flash.GetComponent<Renderer>();
+        if (r != null)
+        {
+            Material m = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard") ?? Shader.Find("Diffuse"));
+            m.color = new Color(0.3f, 0.8f, 1f, 0.7f); // Azul/Ciano Astral
+            r.material = m;
+        }
+
+        StartCoroutine(DesvanecerFlash(flash));
+    }
+
+    IEnumerator DesvanecerFlash(GameObject flash)
+    {
+        float t = 0f;
+        while (t < 0.25f)
+        {
+            if (flash == null) yield break;
+            t += Time.deltaTime;
+            flash.transform.localScale = Vector3.Lerp(Vector3.one * 0.4f, Vector3.one * 1.8f, t / 0.25f);
+            yield return null;
+        }
+        if (flash != null) Destroy(flash);
     }
 }

@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 public class GerenciadorDeClasses : MonoBehaviour
 {
@@ -35,17 +35,72 @@ public class GerenciadorDeClasses : MonoBehaviour
         if (classeMago != null) classeMago.SetActive(false);
         if (classeRanger != null) classeRanger.SetActive(false);
         if (classeDruida != null) classeDruida.SetActive(false);
+
+        // 5. Garante que os botões da interface chamem os métodos corretos
+        ConfigurarBotoesMenu();
+    }
+
+    void ConfigurarBotoesMenu()
+    {
+        UnityEngine.UI.Button[] botoes = FindObjectsByType<UnityEngine.UI.Button>(FindObjectsSortMode.None);
+        foreach (var btn in botoes)
+        {
+            string nome = btn.gameObject.name.ToLower();
+            if (nome.Contains("mago"))
+            {
+                btn.onClick.RemoveListener(EscolherMago);
+                btn.onClick.AddListener(EscolherMago);
+            }
+            else if (nome.Contains("ranger") || nome.Contains("arco"))
+            {
+                btn.onClick.RemoveListener(EscolherRanger);
+                btn.onClick.AddListener(EscolherRanger);
+            }
+            else if (nome.Contains("guerreiro") || nome.Contains("espada"))
+            {
+                btn.onClick.RemoveListener(EscolherGuerreiro);
+                btn.onClick.AddListener(EscolherGuerreiro);
+            }
+            else if (nome.Contains("druida"))
+            {
+                btn.onClick.RemoveListener(EscolherDruida);
+                btn.onClick.AddListener(EscolherDruida);
+            }
+        }
     }
 
     // --- FUNÇÕES DOS BOTÕES ---
 
     public void EscolherGuerreiro()
     {
-        // Ativa a espada do Guerreiro e esconde as outras armas
-        if (classeGuerreiro != null) classeGuerreiro.SetActive(true);
+        // Esconde as outras armas
         if (classeRanger != null) classeRanger.SetActive(false);
         if (classeMago != null) classeMago.SetActive(false);
         if (classeDruida != null) classeDruida.SetActive(false);
+
+        if (classeGuerreiro == null)
+        {
+            Transform parentCam = controleMovimento != null ? controleMovimento.playerCamera : Camera.main?.transform;
+            GameObject guerreiroObj = new GameObject("ClasseGuerreiro");
+            if (parentCam != null)
+            {
+                guerreiroObj.transform.SetParent(parentCam);
+                guerreiroObj.transform.localPosition = Vector3.zero;
+                guerreiroObj.transform.localRotation = Quaternion.identity;
+            }
+            guerreiroObj.AddComponent<ModeloEspadaBerserker>();
+            guerreiroObj.AddComponent<AtaqueEspada>();
+            classeGuerreiro = guerreiroObj;
+        }
+        else
+        {
+            if (classeGuerreiro.GetComponent<ModeloEspadaBerserker>() == null)
+                classeGuerreiro.AddComponent<ModeloEspadaBerserker>();
+            if (classeGuerreiro.GetComponent<AtaqueEspada>() == null)
+                classeGuerreiro.AddComponent<AtaqueEspada>();
+        }
+
+        classeGuerreiro.SetActive(true);
 
         // Mostra a barra de Fúria (exclusiva do Guerreiro)
         if (barraDeFuria != null) barraDeFuria.SetActive(true);
@@ -53,6 +108,7 @@ public class GerenciadorDeClasses : MonoBehaviour
         // Define o modo Guerreiro no PlayerController (Investida)
         if (controleMovimento != null) controleMovimento.DefinirClasse(PlayerController.TipoClasse.Guerreiro);
 
+        Debug.Log("⚔️ Guerreiro Berserker selecionado com sucesso!");
         IniciarJogo();
     }
 
@@ -75,8 +131,48 @@ public class GerenciadorDeClasses : MonoBehaviour
 
     public void EscolherMago()
     {
-        if (classeMago != null) classeMago.SetActive(true);
-        Debug.Log("Mago selecionado! (Em construção)");
+        // Esconde as outras armas
+        if (classeGuerreiro != null) classeGuerreiro.SetActive(false);
+        if (classeRanger != null) classeRanger.SetActive(false);
+        if (classeDruida != null) classeDruida.SetActive(false);
+
+        // Oculta a barra de Fúria (Mago não usa Fúria!)
+        if (barraDeFuria != null) barraDeFuria.SetActive(false);
+
+        // Se o objeto classeMago não foi vinculado no Inspector, cria-o automaticamente na câmera do jogador
+        if (classeMago == null)
+        {
+            Transform parentCam = controleMovimento != null ? controleMovimento.playerCamera : Camera.main?.transform;
+            GameObject magoObj = new GameObject("ClasseMago");
+            if (parentCam != null)
+            {
+                magoObj.transform.SetParent(parentCam);
+                magoObj.transform.localPosition = Vector3.zero;
+                magoObj.transform.localRotation = Quaternion.identity;
+            }
+
+            magoObj.AddComponent<ModeloMagoProcedural>();
+            magoObj.AddComponent<ControleMago>();
+            magoObj.AddComponent<HudMago>();
+            classeMago = magoObj;
+        }
+        else
+        {
+            // Garante que os componentes essenciais estejam anexados
+            if (classeMago.GetComponent<ModeloMagoProcedural>() == null)
+                classeMago.AddComponent<ModeloMagoProcedural>();
+            if (classeMago.GetComponent<ControleMago>() == null)
+                classeMago.AddComponent<ControleMago>();
+            if (classeMago.GetComponent<HudMago>() == null)
+                classeMago.AddComponent<HudMago>();
+        }
+
+        classeMago.SetActive(true);
+
+        // Define o modo Mago no PlayerController (Salto Etéreo)
+        if (controleMovimento != null) controleMovimento.DefinirClasse(PlayerController.TipoClasse.Mago);
+
+        Debug.Log("🧙‍♂️ Mago selecionado com sucesso!");
         IniciarJogo();
     }
 
