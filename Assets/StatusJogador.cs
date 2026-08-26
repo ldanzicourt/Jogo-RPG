@@ -139,6 +139,25 @@ public class StatusJogador : MonoBehaviour
             }
         }
 
+        // 3. Verifica a defesa e Perfect Parry do Druida (Pele de Árvore)
+        ControleDruida druida = GetComponentInChildren<ControleDruida>();
+        if (druida == null) druida = GetComponent<ControleDruida>();
+
+        if (druida != null && druida.EstaEmBloqueio())
+        {
+            if (druida.ChecarPerfectParry())
+            {
+                // Perfect Parry Druídico: Anula 100% do dano e libera esporos de cura (+25 HP)
+                druida.ExecutarPerfectParry();
+                return;
+            }
+            else
+            {
+                // Bloqueio de Casca Normal: 50% de redução
+                quantidade *= 0.5f;
+            }
+        }
+
         vidaAtual -= quantidade;
 
         if (vidaAtual <= 0)

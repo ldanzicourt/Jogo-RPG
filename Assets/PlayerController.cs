@@ -164,6 +164,14 @@ public class PlayerController : MonoBehaviour
                 ExecutarSaltoEtereo(x, z);
             }
         }
+        else if (classeAtual == TipoClasse.Druida)
+        {
+            // Druida: Shift ativa o Passo do Cervo com transformação em 3ª pessoa
+            if (Input.GetKeyDown(KeyCode.LeftShift))
+            {
+                ExecutarPassoDoCervo(x, z);
+            }
+        }
 
         // --- 4. MOVIMENTAÇÃO (WASD) ---
         Vector3 move = transform.right * x + transform.forward * z;
@@ -350,5 +358,47 @@ public class PlayerController : MonoBehaviour
             yield return null;
         }
         if (flash != null) Destroy(flash);
+    }
+
+    // --- MOBILIDADE DO DRUIDA (Passo do Cervo com 3ª Pessoa) ---
+    private float proximoPassoCervoPermitido = 0f;
+    private bool emPassoCervo = false;
+
+    public void ExecutarPassoDoCervo(float inputX, float inputZ)
+    {
+        if (emPassoCervo || Time.time < proximoPassoCervoPermitido) return;
+
+        proximoPassoCervoPermitido = Time.time + 4.0f; // 4s de recarga
+
+        Vector3 direcao = transform.forward;
+        if (Mathf.Abs(inputX) > 0.1f || Mathf.Abs(inputZ) > 0.1f)
+        {
+            direcao = (transform.right * inputX + transform.forward * inputZ).normalized;
+        }
+
+        StartCoroutine(RotinaSaltoDoCervo(direcao));
+    }
+
+    IEnumerator RotinaSaltoDoCervo(Vector3 direcao)
+    {
+        emPassoCervo = true;
+        float duracaoSalto = 1.2f;
+
+        ModeloCervoEspectral cervo = GetComponentInChildren<ModeloCervoEspectral>();
+        if (cervo != null)
+        {
+            StartCoroutine(cervo.RotinaPassoDoCervo(duracaoSalto, this, direcao));
+        }
+
+        float t = 0f;
+        while (t < duracaoSalto)
+        {
+            t += Time.deltaTime;
+            float velocidadeSalto = velocidadeAndar * 2.5f;
+            controller.Move(direcao * velocidadeSalto * Time.deltaTime);
+            yield return null;
+        }
+
+        emPassoCervo = false;
     }
 }

@@ -178,8 +178,49 @@ public class GerenciadorDeClasses : MonoBehaviour
 
     public void EscolherDruida()
     {
-        if (classeDruida != null) classeDruida.SetActive(true);
-        Debug.Log("Druida selecionado! (Em construção)");
+        // Esconde as outras armas
+        if (classeGuerreiro != null) classeGuerreiro.SetActive(false);
+        if (classeRanger != null) classeRanger.SetActive(false);
+        if (classeMago != null) classeMago.SetActive(false);
+
+        // Esconde a barra de Fúria (exclusiva do Guerreiro)
+        if (barraDeFuria != null) barraDeFuria.SetActive(false);
+
+        // Configura a classe Druida
+        if (classeDruida == null)
+        {
+            Transform parentCam = controleMovimento != null ? controleMovimento.playerCamera : Camera.main?.transform;
+            GameObject druidaObj = new GameObject("ClasseDruida");
+            if (parentCam != null)
+            {
+                druidaObj.transform.SetParent(parentCam);
+                druidaObj.transform.localPosition = Vector3.zero;
+                druidaObj.transform.localRotation = Quaternion.identity;
+            }
+            druidaObj.AddComponent<ModeloDruidaProcedural>();
+            druidaObj.AddComponent<ModeloCervoEspectral>();
+            druidaObj.AddComponent<ControleDruida>();
+            druidaObj.AddComponent<HudDruida>();
+            classeDruida = druidaObj;
+        }
+        else
+        {
+            if (classeDruida.GetComponent<ModeloDruidaProcedural>() == null)
+                classeDruida.AddComponent<ModeloDruidaProcedural>();
+            if (classeDruida.GetComponent<ModeloCervoEspectral>() == null)
+                classeDruida.AddComponent<ModeloCervoEspectral>();
+            if (classeDruida.GetComponent<ControleDruida>() == null)
+                classeDruida.AddComponent<ControleDruida>();
+            if (classeDruida.GetComponent<HudDruida>() == null)
+                classeDruida.AddComponent<HudDruida>();
+        }
+
+        classeDruida.SetActive(true);
+
+        // Define o modo Druida no PlayerController (Passo do Cervo)
+        if (controleMovimento != null) controleMovimento.DefinirClasse(PlayerController.TipoClasse.Druida);
+
+        Debug.Log("🌿 Druida Guardião da Natureza selecionado com sucesso!");
         IniciarJogo();
     }
 
