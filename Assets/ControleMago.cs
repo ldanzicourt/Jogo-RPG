@@ -61,6 +61,8 @@ public class ControleMago : MonoBehaviour
 
     void Update()
     {
+        if (Time.timeScale <= 0.001f) return;
+
         AtualizarCronometros();
 
         // 1. FOLHEAR GRIMÓRIO (Ctrl ou Scroll do Mouse)

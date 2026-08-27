@@ -100,9 +100,19 @@ public class HudMago : MonoBehaviour
         }
     }
 
+    Canvas ObterCanvasPrincipal()
+    {
+        Canvas[] todos = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
+        foreach (var c in todos)
+        {
+            if (c.renderMode != RenderMode.WorldSpace) return c;
+        }
+        return todos.Length > 0 ? todos[0] : null;
+    }
+
     void CriarPainelHudSeNecessario()
     {
-        Canvas canvas = FindFirstObjectByType<Canvas>();
+        Canvas canvas = ObterCanvasPrincipal();
         if (canvas == null) return;
 
         Transform hudExistente = canvas.transform.Find("HudMagoPainel");

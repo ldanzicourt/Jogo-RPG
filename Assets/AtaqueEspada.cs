@@ -71,6 +71,8 @@ public class AtaqueEspada : MonoBehaviour
 
     void Update()
     {
+        if (Time.timeScale <= 0.001f) return;
+
         GerenciarTemporizadoresFrenesi();
 
         // 1. MUDANÇA DE POSTURA (Ctrl)

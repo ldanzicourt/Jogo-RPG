@@ -54,9 +54,19 @@ public class HudDruida : MonoBehaviour
         }
     }
 
+    Canvas ObterCanvasPrincipal()
+    {
+        Canvas[] todos = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
+        foreach (var c in todos)
+        {
+            if (c.renderMode != RenderMode.WorldSpace) return c;
+        }
+        return todos.Length > 0 ? todos[0] : null;
+    }
+
     void ConstruirInterfaceHud()
     {
-        Canvas canvas = FindAnyObjectByType<Canvas>();
+        Canvas canvas = ObterCanvasPrincipal();
         if (canvas == null) return;
 
         // Painel no canto inferior direito

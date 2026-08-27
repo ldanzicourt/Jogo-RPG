@@ -61,6 +61,8 @@ public class ControleDruida : MonoBehaviour
 
     void Update()
     {
+        if (Time.timeScale <= 0.001f) return;
+
         // 1. CICLO DAS ESTAÇÕES (Ctrl)
         if (Input.GetKeyDown(KeyCode.LeftControl) || Input.GetKeyDown(KeyCode.RightControl))
         {

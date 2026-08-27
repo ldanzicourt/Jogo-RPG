@@ -1,4 +1,7 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+using TMPro;
 
 public class GerenciadorDeClasses : MonoBehaviour
 {
@@ -12,9 +15,14 @@ public class GerenciadorDeClasses : MonoBehaviour
 
     [Header("Classes (Armas/Scripts)")]
     public GameObject classeGuerreiro; // A sua Espada atual
-    public GameObject classeMago;      // Futuro cajado/mãos mágicas
-    public GameObject classeRanger;    // O Arco
-    public GameObject classeDruida;    // Futuras garras/magia da natureza
+    public GameObject classeMago;      // Cajado/mãos mágicas
+    public GameObject classeRanger;    // O Arco e Cimitarras
+    public GameObject classeDruida;    // Garras/magia da natureza
+
+    // Controle de Pause
+    private bool jogoIniciado = false;
+    private bool jogoPausado = false;
+    private GameObject painelMenuPause = null;
 
     void Start()
     {
@@ -38,6 +46,15 @@ public class GerenciadorDeClasses : MonoBehaviour
 
         // 5. Garante que os botões da interface chamem os métodos corretos
         ConfigurarBotoesMenu();
+    }
+
+    void Update()
+    {
+        // Aciona o Menu de Pause ao pressionar ESC durante o jogo
+        if (jogoIniciado && Input.GetKeyDown(KeyCode.Escape))
+        {
+            AlternarPause();
+        }
     }
 
     void ConfigurarBotoesMenu()
@@ -69,7 +86,7 @@ public class GerenciadorDeClasses : MonoBehaviour
         }
     }
 
-    // --- FUNÇÕES DOS BOTÕES ---
+    // --- FUNÇÕES DOS BOTÕES DE CLASSE ---
 
     public void EscolherGuerreiro()
     {
@@ -260,8 +277,12 @@ public class GerenciadorDeClasses : MonoBehaviour
     // --- LIBERA O JOGO ---
     void IniciarJogo()
     {
-        if (telaDeSelecao != null) telaDeSelecao.SetActive(false); // Some com o menu
+        jogoIniciado = true;
+        jogoPausado = false;
+
+        if (telaDeSelecao != null) telaDeSelecao.SetActive(false); // Some com o menu de classes
         if (hudDoJogador != null) hudDoJogador.SetActive(true);     // Mostra as barras
+        if (painelMenuPause != null) painelMenuPause.SetActive(false); // Esconde o menu de pause
 
         Time.timeScale = 1f; // Despausa o jogo
 
@@ -271,4 +292,218 @@ public class GerenciadorDeClasses : MonoBehaviour
 
         if (controleMovimento != null) controleMovimento.enabled = true; // Devolve o controle ao jogador
     }
+
+    // ==================== SISTEMA DE MENU DE PAUSE (ESC) ====================
+
+    public void AlternarPause()
+    {
+        if (jogoPausado)
+        {
+            ContinuarJogo();
+        }
+        else
+        {
+            PausarJogo();
+        }
+    }
+
+    public void PausarJogo()
+    {
+        jogoPausado = true;
+        Time.timeScale = 0f; // Congela a simulação
+
+        // Libera o mouse para interagir com o menu
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+
+        if (controleMovimento != null) controleMovimento.enabled = false;
+
+        // Cria o menu de pause se ainda não existir
+        if (painelMenuPause == null)
+        {
+            ConstruirMenuPauseProcedural();
+        }
+
+        if (painelMenuPause != null)
+        {
+            painelMenuPause.transform.SetAsLastSibling(); // Renderiza à frente de todos os elementos
+            painelMenuPause.SetActive(true);
+        }
+
+        Debug.Log("⏸️ Jogo Pausado!");
+    }
+
+    public void ContinuarJogo()
+    {
+        jogoPausado = false;
+
+        if (painelMenuPause != null)
+        {
+            painelMenuPause.SetActive(false);
+        }
+
+        Time.timeScale = 1f; // Descongela a simulação
+
+        // Trava o mouse no modo FPS
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+
+        if (controleMovimento != null) controleMovimento.enabled = true;
+
+        Debug.Log("▶️ Jogo Despausado / Retomado!");
+    }
+
+    public void TrocarClasse()
+    {
+        Time.timeScale = 1f; // Garante que a escala de tempo volte a 1 ao recarregar a cena
+        Debug.Log("🔄 Reiniciando cenário para troca de classe...");
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+
+    public void SairDoJogo()
+    {
+        Debug.Log("🚪 Saindo do Jogo...");
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
+#endif
+    }
+
+    Canvas ObterCanvasPrincipal()
+    {
+        // 1. Tenta pegar o Canvas pai do menu de seleção ou do HUD do jogador
+        if (telaDeSelecao != null)
+        {
+            Canvas c = telaDeSelecao.GetComponentInParent<Canvas>();
+            if (c != null && c.renderMode != RenderMode.WorldSpace) return c;
+        }
+
+        if (hudDoJogador != null)
+        {
+            Canvas c = hudDoJogador.GetComponentInParent<Canvas>();
+            if (c != null && c.renderMode != RenderMode.WorldSpace) return c;
+        }
+
+        // 2. Busca entre todos os Canvas da cena um que seja de tela cheia (Overlay ou ScreenSpaceCamera)
+        Canvas[] todos = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
+        foreach (var c in todos)
+        {
+            if (c.renderMode != RenderMode.WorldSpace) return c;
+        }
+
+        return todos.Length > 0 ? todos[0] : null;
+    }
+
+    // --- CONSTRUÇÃO PROCEDURAL DO MENU DE PAUSE ---
+    void ConstruirMenuPauseProcedural()
+    {
+        Canvas canvas = ObterCanvasPrincipal();
+        if (canvas == null) return;
+
+        // 1. Fundo Escurecido de Tela Cheia (Backdrop)
+        painelMenuPause = new GameObject("PainelMenuPause");
+        painelMenuPause.transform.SetParent(canvas.transform, false);
+        painelMenuPause.transform.SetAsLastSibling();
+
+        RectTransform rectBackdrop = painelMenuPause.AddComponent<RectTransform>();
+        rectBackdrop.anchorMin = Vector2.zero;
+        rectBackdrop.anchorMax = Vector2.one;
+        rectBackdrop.offsetMin = Vector2.zero;
+        rectBackdrop.offsetMax = Vector2.zero;
+
+        Image imgBackdrop = painelMenuPause.AddComponent<Image>();
+        imgBackdrop.color = new Color(0.03f, 0.05f, 0.08f, 0.90f); // Dark glass overlay
+
+        // 2. Modal Central Card
+        GameObject modalCard = new GameObject("ModalCard");
+        modalCard.transform.SetParent(painelMenuPause.transform, false);
+
+        RectTransform rectCard = modalCard.AddComponent<RectTransform>();
+        rectCard.anchorMin = new Vector2(0.5f, 0.5f);
+        rectCard.anchorMax = new Vector2(0.5f, 0.5f);
+        rectCard.pivot = new Vector2(0.5f, 0.5f);
+        rectCard.anchoredPosition = Vector2.zero;
+        rectCard.sizeDelta = new Vector2(360f, 380f);
+
+        Image imgCard = modalCard.AddComponent<Image>();
+        imgCard.color = new Color(0.08f, 0.11f, 0.15f, 0.98f); // Slate Card
+
+        // 3. Título do Menu
+        GameObject objTitulo = new GameObject("TextoTituloPause");
+        objTitulo.transform.SetParent(modalCard.transform, false);
+
+        RectTransform rectTitulo = objTitulo.AddComponent<RectTransform>();
+        rectTitulo.anchorMin = new Vector2(0f, 0.78f);
+        rectTitulo.anchorMax = new Vector2(1f, 1f);
+        rectTitulo.offsetMin = new Vector2(15f, 0f);
+        rectTitulo.offsetMax = new Vector2(-15f, -10f);
+
+        TextMeshProUGUI tmpTitulo = objTitulo.AddComponent<TextMeshProUGUI>();
+        tmpTitulo.text = "⏸️ JOGO PAUSADO";
+        tmpTitulo.fontSize = 24;
+        tmpTitulo.fontStyle = FontStyles.Bold;
+        tmpTitulo.alignment = TextAlignmentOptions.Center;
+        tmpTitulo.color = new Color(1f, 0.85f, 0.35f); // Dourado brilhante
+
+        // 4. Linha Divisória Decorativa
+        GameObject linhaDiv = new GameObject("LinhaDivisoria");
+        linhaDiv.transform.SetParent(modalCard.transform, false);
+        RectTransform rectLinha = linhaDiv.AddComponent<RectTransform>();
+        rectLinha.anchorMin = new Vector2(0.1f, 0.78f);
+        rectLinha.anchorMax = new Vector2(0.9f, 0.78f);
+        rectLinha.sizeDelta = new Vector2(0f, 2f);
+        Image imgLinha = linhaDiv.AddComponent<Image>();
+        imgLinha.color = new Color(1f, 0.85f, 0.35f, 0.35f);
+
+        // 5. Botões de Ação
+        CriarBotaoPause(modalCard.transform, "BtnContinuar", "CONTINUAR", 0.55f, new Color(0.16f, 0.52f, 0.28f), ContinuarJogo);
+        CriarBotaoPause(modalCard.transform, "BtnTrocarClasse", "TROCAR CLASSE", 0.35f, new Color(0.20f, 0.38f, 0.65f), TrocarClasse);
+        CriarBotaoPause(modalCard.transform, "BtnSair", "SAIR DO JOGO", 0.15f, new Color(0.68f, 0.20f, 0.20f), SairDoJogo);
+
+        // Inicia desativado até ser chamado
+        painelMenuPause.SetActive(false);
+    }
+
+    void CriarBotaoPause(Transform pai, string nomeObj, string texto, float ancoraY, Color corBase, UnityEngine.Events.UnityAction acao)
+    {
+        GameObject btnObj = new GameObject(nomeObj);
+        btnObj.transform.SetParent(pai, false);
+
+        RectTransform rectBtn = btnObj.AddComponent<RectTransform>();
+        rectBtn.anchorMin = new Vector2(0.1f, ancoraY - 0.08f);
+        rectBtn.anchorMax = new Vector2(0.9f, ancoraY + 0.08f);
+        rectBtn.offsetMin = Vector2.zero;
+        rectBtn.offsetMax = Vector2.zero;
+
+        Image imgBtn = btnObj.AddComponent<Image>();
+        imgBtn.color = corBase;
+
+        Button btn = btnObj.AddComponent<Button>();
+        ColorBlock colors = btn.colors;
+        colors.normalColor = corBase;
+        colors.highlightedColor = corBase * 1.25f;
+        colors.pressedColor = corBase * 0.80f;
+        colors.selectedColor = corBase;
+        btn.colors = colors;
+        btn.onClick.AddListener(acao);
+
+        // Texto do Botão
+        GameObject textoObj = new GameObject("Texto");
+        textoObj.transform.SetParent(btnObj.transform, false);
+
+        RectTransform rectTexto = textoObj.AddComponent<RectTransform>();
+        rectTexto.anchorMin = Vector2.zero;
+        rectTexto.anchorMax = Vector2.one;
+        rectTexto.offsetMin = Vector2.zero;
+        rectTexto.offsetMax = Vector2.zero;
+
+        TextMeshProUGUI tmpTexto = textoObj.AddComponent<TextMeshProUGUI>();
+        tmpTexto.text = texto;
+        tmpTexto.fontSize = 16;
+        tmpTexto.fontStyle = FontStyles.Bold;
+        tmpTexto.alignment = TextAlignmentOptions.Center;
+        tmpTexto.color = Color.white;
+    }
 }
+

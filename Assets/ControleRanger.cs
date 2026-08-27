@@ -79,6 +79,9 @@ public class ControleRanger : MonoBehaviour
 
     void Update()
     {
+        // Se o jogo estiver pausado, não processa comandos de combate
+        if (Time.timeScale <= 0.001f) return;
+
         // 1. ALTERNAR ESTILO DE LUTA (Ctrl ou Scroll do Mouse)
         if (Input.GetKeyDown(KeyCode.LeftControl) || Input.GetKeyDown(KeyCode.RightControl))
         {
