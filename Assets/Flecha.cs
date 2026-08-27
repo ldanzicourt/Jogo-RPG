@@ -59,7 +59,15 @@ public class Flecha : MonoBehaviour
 
         if (vida != null)
         {
-            vida.ReceberDano(dano);
+            ControleRanger ranger = FindAnyObjectByType<ControleRanger>();
+            if (ranger != null)
+            {
+                ranger.RegistrarAcertoPassiva(alvo, vida, dano);
+            }
+            else
+            {
+                vida.ReceberDano(dano);
+            }
 
             // Leve empurrão físico
             Rigidbody rbInimigo = alvo.GetComponent<Rigidbody>();

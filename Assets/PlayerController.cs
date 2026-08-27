@@ -134,26 +134,11 @@ public class PlayerController : MonoBehaviour
         }
         else if (classeAtual == TipoClasse.Ranger)
         {
-            // Ranger: Shift ativa Corrida e Escalada de Parede
+            // Ranger: Segurar Shift ativa Corrida Ágil (Sprint), enquanto o toque aciona o Gancho de Escalada
             bool segurandoShift = Input.GetKey(KeyCode.LeftShift);
-
             if (segurandoShift)
             {
                 velocidadeAtual = velocidadeSprint;
-
-                // Verifica se está empurrando para frente contra uma parede
-                if (z > 0.1f && ChecarParedeParaEscalada())
-                {
-                    escalandoParede = true;
-                }
-                else
-                {
-                    escalandoParede = false;
-                }
-            }
-            else
-            {
-                escalandoParede = false;
             }
         }
         else if (classeAtual == TipoClasse.Mago)

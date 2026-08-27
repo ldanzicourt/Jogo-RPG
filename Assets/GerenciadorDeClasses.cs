@@ -114,18 +114,51 @@ public class GerenciadorDeClasses : MonoBehaviour
 
     public void EscolherRanger()
     {
-        // Ativa o Arco do Ranger e esconde as outras armas
+        // Esconde as outras armas
         if (classeGuerreiro != null) classeGuerreiro.SetActive(false);
-        if (classeRanger != null) classeRanger.SetActive(true);
         if (classeMago != null) classeMago.SetActive(false);
         if (classeDruida != null) classeDruida.SetActive(false);
 
         // Oculta a barra de Fúria (Ranger não usa Fúria!)
         if (barraDeFuria != null) barraDeFuria.SetActive(false);
 
-        // Define o modo Ranger no PlayerController (Sprint + Wall Climb)
+        // Se o objeto classeRanger não foi vinculado no Inspector, cria-o automaticamente na câmera do jogador
+        if (classeRanger == null)
+        {
+            Transform parentCam = controleMovimento != null ? controleMovimento.playerCamera : Camera.main?.transform;
+            GameObject rangerObj = new GameObject("ClasseRanger");
+            if (parentCam != null)
+            {
+                rangerObj.transform.SetParent(parentCam);
+                rangerObj.transform.localPosition = Vector3.zero;
+                rangerObj.transform.localRotation = Quaternion.identity;
+            }
+
+            rangerObj.AddComponent<ModeloRangerProcedural>();
+            rangerObj.AddComponent<ControleRanger>();
+            rangerObj.AddComponent<HudRanger>();
+            classeRanger = rangerObj;
+        }
+        else
+        {
+            // Remove o script antigo AtaqueArco caso exista no objeto legado
+            AtaqueArco antigoArco = classeRanger.GetComponent<AtaqueArco>();
+            if (antigoArco != null) Destroy(antigoArco);
+
+            if (classeRanger.GetComponent<ModeloRangerProcedural>() == null)
+                classeRanger.AddComponent<ModeloRangerProcedural>();
+            if (classeRanger.GetComponent<ControleRanger>() == null)
+                classeRanger.AddComponent<ControleRanger>();
+            if (classeRanger.GetComponent<HudRanger>() == null)
+                classeRanger.AddComponent<HudRanger>();
+        }
+
+        classeRanger.SetActive(true);
+
+        // Define o modo Ranger no PlayerController
         if (controleMovimento != null) controleMovimento.DefinirClasse(PlayerController.TipoClasse.Ranger);
 
+        Debug.Log("🏹 Patrulheiro (Ranger) selecionado com sucesso!");
         IniciarJogo();
     }
 
