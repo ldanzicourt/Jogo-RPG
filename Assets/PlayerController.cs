@@ -54,6 +54,12 @@ public class PlayerController : MonoBehaviour
     void Start()
     {
         controller = GetComponent<CharacterController>();
+        if (playerCamera == null)
+        {
+            Camera c = GetComponentInChildren<Camera>();
+            if (c != null) playerCamera = c.transform;
+            else if (Camera.main != null) playerCamera = Camera.main.transform;
+        }
     }
 
     public void DefinirClasse(TipoClasse novaClasse)
@@ -67,15 +73,26 @@ public class PlayerController : MonoBehaviour
     {
         if (Time.timeScale <= 0.001f) return;
 
-        // --- 1. VISÃO DO MOUSE ---
-        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
-        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
+        // Garante referência da câmera em primeira pessoa se necessário
+        if (playerCamera == null)
+        {
+            Camera c = GetComponentInChildren<Camera>();
+            if (c != null) playerCamera = c.transform;
+            else if (Camera.main != null) playerCamera = Camera.main.transform;
+        }
 
-        xRotation -= mouseY;
-        xRotation = Mathf.Clamp(xRotation, -90f, 90f);
+        // --- 1. VISÃO DO MOUSE (1ª PESSOA) ---
+        if (playerCamera != null)
+        {
+            float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
+            float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
 
-        playerCamera.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
-        transform.Rotate(Vector3.up * mouseX);
+            xRotation -= mouseY;
+            xRotation = Mathf.Clamp(xRotation, -90f, 90f);
+
+            playerCamera.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
+            transform.Rotate(Vector3.up * mouseX);
+        }
 
         // --- 2. VERIFICAÇÃO DE CHÃO ---
         isGrounded = controller.isGrounded;

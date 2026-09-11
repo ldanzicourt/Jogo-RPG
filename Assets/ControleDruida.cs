@@ -88,8 +88,10 @@ public class ControleDruida : MonoBehaviour
             indiceCombo = 0;
         }
 
-        // 3. ATAQUE BÁSICO: CHICOTE DE ESPINHOS (Clique Esquerdo / Fire1)
-        if (Input.GetButtonDown("Fire1"))
+        // 3. ATAQUE BÁSICO: CHICOTE DE ESPINHOS (Clique Esquerdo / LMB)
+        bool segurandoCtrl = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+        bool querAtacar = (Input.GetMouseButtonDown(0) || (!segurandoCtrl && Input.GetButtonDown("Fire1"))) && !segurandoCtrl;
+        if (querAtacar)
         {
             ExecutarProximoGolpeCombo();
         }
@@ -208,18 +210,74 @@ public class ControleDruida : MonoBehaviour
     {
         proximaSupremaPermitida = Time.time + tempoRecargaSuprema;
 
-        Vector3 posChao = transform.position;
-        RaycastHit hit;
-        if (Physics.Raycast(transform.position + Vector3.up * 2f, Vector3.down, out hit, 10f))
+        // 1. Determina o ponto horizontal mirado (X, Z)
+        Vector3 pontoHorizontal;
+        if (cameraJogador != null)
         {
-            posChao = hit.point;
+            Ray ray = cameraJogador.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+            RaycastHit[] hitsMira = Physics.RaycastAll(ray, 45f);
+            float menorDist = float.MaxValue;
+            Vector3 melhorPonto = cameraJogador.transform.position + cameraJogador.transform.forward * 12f;
+            bool achou = false;
+
+            foreach (var h in hitsMira)
+            {
+                if (h.collider.isTrigger) continue;
+                if (h.transform.root == transform.root || h.collider.CompareTag("Player")) continue;
+                if (h.distance < menorDist && h.distance > 0.5f)
+                {
+                    menorDist = h.distance;
+                    melhorPonto = h.point;
+                    achou = true;
+                }
+            }
+
+            pontoHorizontal = achou ? melhorPonto : (cameraJogador.transform.position + cameraJogador.transform.forward * 12f);
+        }
+        else
+        {
+            pontoHorizontal = transform.position + transform.forward * 12f;
+        }
+
+        // 2. Garante que o centro fique perfeitamente COLADO NO CHÃO (Ground Snap)
+        // Faz uma checagem de cima para baixo ignorando inimigos e o jogador para achar o piso real
+        float alturaReferencia = transform.root.position.y;
+        Vector3 pontoOrigemQueda = new Vector3(pontoHorizontal.x, alturaReferencia + 15f, pontoHorizontal.z);
+        RaycastHit[] hitsChao = Physics.RaycastAll(pontoOrigemQueda, Vector3.down, 50f);
+
+        float melhorY = float.MinValue;
+        bool encontrouSolo = false;
+
+        foreach (var h in hitsChao)
+        {
+            if (h.collider.isTrigger) continue;
+            if (h.transform.root == transform.root || h.collider.CompareTag("Player")) continue;
+            // Ignora inimigos para NÃO ficar em cima do peito/cabeça deles!
+            if (h.collider.GetComponentInParent<SistemaDeVida>() != null || h.collider.CompareTag("Enemy")) continue;
+
+            if (h.point.y > melhorY)
+            {
+                melhorY = h.point.y;
+                encontrouSolo = true;
+            }
+        }
+
+        Vector3 posChaoFinal;
+        if (encontrouSolo)
+        {
+            posChaoFinal = new Vector3(pontoHorizontal.x, melhorY, pontoHorizontal.z);
+        }
+        else
+        {
+            // Fallback para a altura dos pés do próprio jogador
+            posChaoFinal = new Vector3(pontoHorizontal.x, alturaReferencia, pontoHorizontal.z);
         }
 
         GameObject bosqueObj = new GameObject("BosqueDaTranquilidade");
-        bosqueObj.transform.position = posChao;
+        bosqueObj.transform.position = posChaoFinal;
         bosqueObj.AddComponent<BosqueTranquilidade>();
 
-        Debug.Log("🌳 SUPREMA: Bosque da Tranquilidade convocado!");
+        Debug.Log($"🌳 SUPREMA: Bosque da Tranquilidade convocado no solo em {posChaoFinal}!");
     }
 
     void GerarSementeVital(Vector3 posicao)

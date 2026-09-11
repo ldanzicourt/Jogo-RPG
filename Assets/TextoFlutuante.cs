@@ -1,4 +1,5 @@
-using UnityEngine;
+ï»¿using UnityEngine;
+using TMPro;
 
 public class TextoFlutuante : MonoBehaviour
 {
@@ -6,8 +7,8 @@ public class TextoFlutuante : MonoBehaviour
 
     void Start()
     {
-        // Destrói este texto automaticamente após 1 segundo para não travar o jogo
-        Destroy(gameObject, 1f);
+        // Destroi este texto automaticamente apos 1.2 segundos para nao acumular no jogo
+        Destroy(gameObject, 1.2f);
     }
 
     void Update()
@@ -15,7 +16,23 @@ public class TextoFlutuante : MonoBehaviour
         // Move o texto para cima continuamente
         transform.Translate(Vector3.up * velocidadeSubida * Time.deltaTime, Space.World);
 
-        // Faz o texto virar para a câmera do jogador (efeito Billboard)
-        transform.LookAt(transform.position + Camera.main.transform.forward);
+        // Faz o texto virar para a camera do jogador (efeito Billboard)
+        if (Camera.main != null)
+        {
+            transform.LookAt(transform.position + Camera.main.transform.forward);
+        }
+    }
+
+    public void DefinirTexto(string texto, Color cor)
+    {
+        TextMeshPro tmp = GetComponent<TextMeshPro>();
+        if (tmp == null)
+        {
+            tmp = gameObject.AddComponent<TextMeshPro>();
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.fontSize = 4.5f;
+        }
+        tmp.text = texto;
+        tmp.color = cor;
     }
 }

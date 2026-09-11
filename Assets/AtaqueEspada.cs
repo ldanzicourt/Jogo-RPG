@@ -106,8 +106,11 @@ public class AtaqueEspada : MonoBehaviour
         // Se estiver em Guarda Bruta ou no meio de um golpe, não inicia novo ataque
         if (emGuardaBruta || atacando) return;
 
-        // 5. ATAQUE BÁSICO PESADO COM CLEAVE (Clique Esquerdo / Fire1)
-        if (Input.GetButton("Fire1") && Time.time >= proximoAtaquePermitido)
+        // 5. ATAQUE BÁSICO PESADO COM CLEAVE (Clique Esquerdo / LMB)
+        bool segurandoCtrl = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+        bool querAtacar = (Input.GetMouseButton(0) || (!segurandoCtrl && Input.GetButton("Fire1"))) && !segurandoCtrl;
+
+        if (querAtacar && Time.time >= proximoAtaquePermitido)
         {
             float cadencia = emFrenesi ? tempoEntreAtaquesFrenesi : tempoEntreAtaquesNormal;
             proximoAtaquePermitido = Time.time + cadencia;

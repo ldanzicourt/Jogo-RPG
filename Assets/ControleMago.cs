@@ -166,12 +166,22 @@ public class ControleMago : MonoBehaviour
     // --- 3. ATAQUES DAS ESCOLAS MÁGICAS ---
     void GerenciarAtaquesEscolas()
     {
+        bool segurandoCtrl = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+        if (segurandoCtrl)
+        {
+            if (canalizandoSifao) PararSifao();
+            return; // Se estiver apertando Ctrl para folhear o grimório, NÃO dispara nenhuma magia!
+        }
+
+        bool cliqueAtaqueContinuo = Input.GetMouseButton(0) || (!segurandoCtrl && Input.GetButton("Fire1"));
+        bool cliqueAtaqueDown = Input.GetMouseButtonDown(0) || (!segurandoCtrl && Input.GetButtonDown("Fire1"));
+
         switch (escolaAtual)
         {
             case EscolaMagica.Evocacao:
                 if (canalizandoSifao) PararSifao();
 
-                if (Input.GetButton("Fire1") && Time.time >= proximoDardoPermitido)
+                if (cliqueAtaqueContinuo && Time.time >= proximoDardoPermitido)
                 {
                     proximoDardoPermitido = Time.time + cadenciaDardo;
                     DispararDardoArcano();
@@ -179,7 +189,7 @@ public class ControleMago : MonoBehaviour
                 break;
 
             case EscolaMagica.Necromancia:
-                if (Input.GetButton("Fire1"))
+                if (cliqueAtaqueContinuo)
                 {
                     ProcessarSifaoDeAlma();
                 }
@@ -192,7 +202,7 @@ public class ControleMago : MonoBehaviour
             case EscolaMagica.Conjuracao:
                 if (canalizandoSifao) PararSifao();
 
-                if (Input.GetButtonDown("Fire1"))
+                if (cliqueAtaqueDown)
                 {
                     if (Time.time >= tempoRecargaVortice)
                     {
@@ -330,6 +340,33 @@ public class ControleMago : MonoBehaviour
         if (Physics.Raycast(ray, out hit, 25f))
         {
             pontoSpawn = hit.point;
+        }
+
+        // Garante que o Vórtice de Trama fique colado no solo, não flutuando no ar ou peito dos inimigos
+        float alturaJogador = transform.root.position.y;
+        RaycastHit[] hitsChao = Physics.RaycastAll(new Vector3(pontoSpawn.x, alturaJogador + 10f, pontoSpawn.z), Vector3.down, 40f);
+        float melhorY = float.MinValue;
+        bool achouSolo = false;
+        foreach (var h in hitsChao)
+        {
+            if (h.collider.isTrigger) continue;
+            if (h.transform.root == transform.root || h.collider.CompareTag("Player")) continue;
+            if (h.collider.GetComponentInParent<SistemaDeVida>() != null || h.collider.CompareTag("Enemy")) continue;
+
+            if (h.point.y > melhorY)
+            {
+                melhorY = h.point.y;
+                achouSolo = true;
+            }
+        }
+
+        if (achouSolo)
+        {
+            pontoSpawn.y = melhorY;
+        }
+        else
+        {
+            pontoSpawn.y = alturaJogador;
         }
 
         tempoRecargaVortice = Time.time + cooldownVortice;

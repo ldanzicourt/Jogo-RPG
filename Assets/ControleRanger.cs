@@ -109,11 +109,14 @@ public class ControleRanger : MonoBehaviour
         // Se estiver em animação de gancho, não ataca
         if (emPuxaoGancho) return;
 
-        // 5. ATAQUE BÁSICO (Clique Esquerdo / LMB / Fire1)
+        // 5. ATAQUE BÁSICO (Clique Esquerdo / LMB)
+        bool segurandoCtrl = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+
         if (estiloAtual == EstiloLutaRanger.Arquearia)
         {
             // Disparos do Arco Curto
-            if (Input.GetButton("Fire1") && Time.time >= proximoTiroArcoPermitido)
+            bool querAtirar = (Input.GetMouseButton(0) || (!segurandoCtrl && Input.GetButton("Fire1"))) && !segurandoCtrl;
+            if (querAtirar && Time.time >= proximoTiroArcoPermitido)
             {
                 proximoTiroArcoPermitido = Time.time + cadenciaArco;
                 DispararArco();
@@ -127,7 +130,8 @@ public class ControleRanger : MonoBehaviour
                 indiceCombo = 0;
             }
 
-            if (Input.GetButtonDown("Fire1") && !atacandoCimitarra)
+            bool querGolpear = (Input.GetMouseButtonDown(0) || (!segurandoCtrl && Input.GetButtonDown("Fire1"))) && !segurandoCtrl;
+            if (querGolpear && !atacandoCimitarra)
             {
                 ExecutarComboCimitarras();
             }
@@ -557,20 +561,67 @@ public class ControleRanger : MonoBehaviour
     {
         proximaSupremaPermitida = Time.time + cooldownSuprema;
 
-        // Mira o centro da saraivada
-        Vector3 pontoCentro = transform.position + transform.forward * 14f;
-        Ray ray = cameraJogador.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
-        RaycastHit hit;
-        if (Physics.Raycast(ray, out hit, 40f))
+        // 1. Determina o ponto horizontal mirado (X, Z)
+        Vector3 pontoHorizontal;
+        if (cameraJogador != null)
         {
-            pontoCentro = hit.point;
+            Ray ray = cameraJogador.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+            RaycastHit[] hitsMira = Physics.RaycastAll(ray, 60f);
+            float menorDist = float.MaxValue;
+            Vector3 melhorPonto = cameraJogador.transform.position + cameraJogador.transform.forward * 16f;
+            bool achouHit = false;
+
+            foreach (var h in hitsMira)
+            {
+                if (h.collider.isTrigger) continue;
+                if (h.transform.root == transform.root || h.collider.CompareTag("Player")) continue;
+                if (h.distance < menorDist && h.distance > 0.5f)
+                {
+                    menorDist = h.distance;
+                    melhorPonto = h.point;
+                    achouHit = true;
+                }
+            }
+
+            pontoHorizontal = achouHit ? melhorPonto : (cameraJogador.transform.position + cameraJogador.transform.forward * 16f);
+        }
+        else
+        {
+            pontoHorizontal = transform.position + transform.forward * 16f;
         }
 
-        // Garante que o centro fique rente ao solo
-        RaycastHit hitSolo;
-        if (Physics.Raycast(pontoCentro + Vector3.up * 3f, Vector3.down, out hitSolo, 10f))
+        // 2. Garante que o centro fique perfeitamente COLADO NO CHÃO (Ground Snap)
+        // Faz uma checagem de cima para baixo ignorando inimigos e o jogador para achar o piso real
+        float alturaReferencia = playerController != null ? playerController.transform.position.y : transform.root.position.y;
+        Vector3 pontoOrigemQueda = new Vector3(pontoHorizontal.x, alturaReferencia + 15f, pontoHorizontal.z);
+        RaycastHit[] hitsChao = Physics.RaycastAll(pontoOrigemQueda, Vector3.down, 60f);
+
+        float melhorY = float.MinValue;
+        bool encontrouSolo = false;
+
+        foreach (var h in hitsChao)
         {
-            pontoCentro = hitSolo.point;
+            if (h.collider.isTrigger) continue;
+            if (h.transform.root == transform.root || h.collider.CompareTag("Player")) continue;
+            // Ignora inimigos para a saraivada NÃO ficar em cima do peito/cabeça deles!
+            if (h.collider.GetComponentInParent<SistemaDeVida>() != null || h.collider.CompareTag("Enemy")) continue;
+
+            if (h.point.y > melhorY)
+            {
+                melhorY = h.point.y;
+                encontrouSolo = true;
+            }
+        }
+
+        Vector3 pontoCentroFinal;
+        if (encontrouSolo)
+        {
+            pontoCentroFinal = new Vector3(pontoHorizontal.x, melhorY, pontoHorizontal.z);
+        }
+        else
+        {
+            // Se mirou além dos limites ou no vazio, usa a altura do solo do próprio jogador
+            pontoCentroFinal = new Vector3(pontoHorizontal.x, alturaReferencia, pontoHorizontal.z);
         }
 
         // Disparo para o alto com o arco
@@ -579,12 +630,12 @@ public class ControleRanger : MonoBehaviour
             StartCoroutine(modeloRanger.ExecutarAnimacaoTiroArco(0.4f));
         }
 
-        // Cria a entidade da Saraivada
+        // Cria a entidade da Saraivada fixada no solo
         GameObject saraivadaObj = new GameObject("SaraivadaDeFlechas");
-        saraivadaObj.transform.position = pontoCentro;
+        saraivadaObj.transform.position = pontoCentroFinal;
         saraivadaObj.AddComponent<SaraivadaFlechas>();
 
-        Debug.Log("🏹 SUPREMA: Conjurar Saraivada disparada em área cilíndrica de 12m de raio!");
+        Debug.Log($"🏹 SUPREMA: Conjurar Saraivada disparada e fixada no solo em {pontoCentroFinal}!");
     }
 
     // --- GETTERS PARA O HUD ---

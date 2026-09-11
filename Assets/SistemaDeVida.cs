@@ -5,7 +5,7 @@ using TMPro; // Necessário para o texto TextMeshPro
 public class SistemaDeVida : MonoBehaviour
 {
     public float vidaMaxima = 100f;
-    private float vidaAtual;
+    public float vidaAtual;
 
     [Header("Interface")]
     public Image barraDeVida;        // A barra verde do inimigo
@@ -49,6 +49,12 @@ public class SistemaDeVida : MonoBehaviour
     public float ObterVidaAtual()
     {
         return vidaAtual;
+    }
+
+    public void Curar(float quantidade)
+    {
+        vidaAtual = Mathf.Min(vidaMaxima, vidaAtual + quantidade);
+        AtualizarBarra();
     }
 
     public void ReceberDano(float quantidadeDano, Color corPersonalizada)

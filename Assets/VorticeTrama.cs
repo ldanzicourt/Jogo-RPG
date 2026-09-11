@@ -17,6 +17,27 @@ public class VorticeTrama : MonoBehaviour
 
     void Start()
     {
+        // Garante assentamento no solo
+        RaycastHit[] hits = Physics.RaycastAll(transform.position + Vector3.up * 6f, Vector3.down, 30f);
+        float melhorY = float.MinValue;
+        bool achou = false;
+        foreach (var h in hits)
+        {
+            if (h.collider.isTrigger) continue;
+            if (h.collider.CompareTag("Player") || h.collider.GetComponentInParent<PlayerController>() != null) continue;
+            if (h.collider.GetComponentInParent<SistemaDeVida>() != null || h.collider.CompareTag("Enemy")) continue;
+
+            if (h.point.y > melhorY)
+            {
+                melhorY = h.point.y;
+                achou = true;
+            }
+        }
+        if (achou)
+        {
+            transform.position = new Vector3(transform.position.x, melhorY, transform.position.z);
+        }
+
         tempoCriacao = Time.time;
         proximoTickDano = Time.time;
         CriarVisual();

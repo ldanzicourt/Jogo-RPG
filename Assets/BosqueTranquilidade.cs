@@ -16,11 +16,37 @@ public class BosqueTranquilidade : MonoBehaviour
 
     void Start()
     {
+        // Garante que o bosque esteja perfeitamente colado ao solo
+        AjustarParaSolo();
+
         tempoCriacao = Time.time;
         statusJogador = FindAnyObjectByType<StatusJogador>();
         ConstruirBosqueVisual();
         StartCoroutine(RotinaEfeitosBosque());
         Destroy(gameObject, duracao);
+    }
+
+    void AjustarParaSolo()
+    {
+        RaycastHit[] hits = Physics.RaycastAll(transform.position + Vector3.up * 8f, Vector3.down, 40f);
+        float melhorY = float.MinValue;
+        bool achou = false;
+        foreach (var h in hits)
+        {
+            if (h.collider.isTrigger) continue;
+            if (h.collider.CompareTag("Player") || h.collider.GetComponentInParent<PlayerController>() != null) continue;
+            if (h.collider.GetComponentInParent<SistemaDeVida>() != null || h.collider.CompareTag("Enemy")) continue;
+
+            if (h.point.y > melhorY)
+            {
+                melhorY = h.point.y;
+                achou = true;
+            }
+        }
+        if (achou)
+        {
+            transform.position = new Vector3(transform.position.x, melhorY, transform.position.z);
+        }
     }
 
     void Update()
@@ -115,8 +141,8 @@ public class BosqueTranquilidade : MonoBehaviour
         GameObject circulo = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         circulo.name = "ChaoSantuario";
         circulo.transform.SetParent(transform, false);
-        circulo.transform.localPosition = new Vector3(0f, 0.02f, 0f);
-        circulo.transform.localScale = new Vector3(raio * 2f, 0.02f, raio * 2f);
+        circulo.transform.localPosition = new Vector3(0f, 0.01f, 0f);
+        circulo.transform.localScale = new Vector3(raio * 2f, 0.005f, raio * 2f);
         Destroy(circulo.GetComponent<Collider>());
 
         Renderer rendChao = circulo.GetComponent<Renderer>();
@@ -129,7 +155,7 @@ public class BosqueTranquilidade : MonoBehaviour
         for (int i = 0; i < totalArbustos; i++)
         {
             float angulo = (i * 360f / totalArbustos) * Mathf.Deg2Rad;
-            Vector3 posBorda = new Vector3(Mathf.Cos(angulo) * (raio - 0.5f), 0.3f, Mathf.Sin(angulo) * (raio - 0.5f));
+            Vector3 posBorda = new Vector3(Mathf.Cos(angulo) * (raio - 0.5f), 0.4f, Mathf.Sin(angulo) * (raio - 0.5f));
 
             // Raiz/Tronco
             GameObject tronco = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -149,7 +175,7 @@ public class BosqueTranquilidade : MonoBehaviour
             GameObject flor = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             flor.name = "Folhagem_" + i;
             flor.transform.SetParent(transform, false);
-            flor.transform.localPosition = posBorda + Vector3.up * 0.9f;
+            flor.transform.localPosition = posBorda + Vector3.up * 0.7f;
             flor.transform.localScale = new Vector3(0.9f, 0.7f, 0.9f);
             Destroy(flor.GetComponent<Collider>());
 

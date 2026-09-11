@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using UnityEngine;
 
 public class AtaqueArco : MonoBehaviour
@@ -41,8 +41,11 @@ public class AtaqueArco : MonoBehaviour
 
     void Update()
     {
-        // Atira continuamente enquanto segurar o botão esquerdo do mouse (Fire1)
-        if (Input.GetButton("Fire1") && Time.time >= proximoDisparoPermitido)
+        // Atira continuamente enquanto segurar o botão esquerdo do mouse (LMB)
+        bool segurandoCtrl = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+        bool querAtirar = (Input.GetMouseButton(0) || (!segurandoCtrl && Input.GetButton("Fire1"))) && !segurandoCtrl;
+
+        if (querAtirar && Time.time >= proximoDisparoPermitido)
         {
             proximoDisparoPermitido = Time.time + tempoEntreDisparos;
             DispararFlecha();

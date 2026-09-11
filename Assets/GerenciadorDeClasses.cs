@@ -26,25 +26,26 @@ public class GerenciadorDeClasses : MonoBehaviour
 
     void Start()
     {
-        // 1. Pausa o tempo do jogo para os inimigos não atacarem
+        // 1. Pausa o tempo para o jogador escolher sua classe
         Time.timeScale = 0f;
 
-        // 2. Garante que o mouse esteja visível para clicar nos botões
+        // 2. Destrava e exibe o cursor do mouse para clicar nos botões
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
-        // 3. Desativa o movimento e o HUD provisoriamente
+        // 3. Exibe o menu com os 4 botões de classe e oculta o HUD
         if (controleMovimento != null) controleMovimento.enabled = false;
         if (hudDoJogador != null) hudDoJogador.SetActive(false);
+        if (barraDeFuria != null) barraDeFuria.SetActive(false);
         if (telaDeSelecao != null) telaDeSelecao.SetActive(true);
 
-        // 4. Esconde todas as armas/classes por padrão
+        // 4. Esconde todas as armas até o jogador escolher
         if (classeGuerreiro != null) classeGuerreiro.SetActive(false);
         if (classeMago != null) classeMago.SetActive(false);
         if (classeRanger != null) classeRanger.SetActive(false);
         if (classeDruida != null) classeDruida.SetActive(false);
 
-        // 5. Garante que os botões da interface chamem os métodos corretos
+        // 5. Garante que os botões da interface chamem os métodos corretos de cada classe
         ConfigurarBotoesMenu();
     }
 
@@ -284,13 +285,34 @@ public class GerenciadorDeClasses : MonoBehaviour
         if (hudDoJogador != null) hudDoJogador.SetActive(true);     // Mostra as barras
         if (painelMenuPause != null) painelMenuPause.SetActive(false); // Esconde o menu de pause
 
+        // Constrói e inicializa a Fase 1: Pradaria da Ferrugem
+        GeradorPradariaDaFerrugem gerador = FindAnyObjectByType<GeradorPradariaDaFerrugem>();
+        if (gerador == null)
+        {
+            GameObject geradorObj = new GameObject("GeradorPradariaDaFerrugem_Auto");
+            gerador = geradorObj.AddComponent<GeradorPradariaDaFerrugem>();
+        }
+        gerador.ConstruirPradariaDaFerrugem();
+
         Time.timeScale = 1f; // Despausa o jogo
 
-        // Trava e esconde o mouse novamente para o estilo FPS
+        // Trava e esconde o mouse para o estilo FPS em 1ª pessoa
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
-        if (controleMovimento != null) controleMovimento.enabled = true; // Devolve o controle ao jogador
+        if (controleMovimento == null)
+        {
+            controleMovimento = FindAnyObjectByType<PlayerController>();
+        }
+
+        if (controleMovimento != null)
+        {
+            if (controleMovimento.playerCamera == null && Camera.main != null)
+            {
+                controleMovimento.playerCamera = Camera.main.transform;
+            }
+            controleMovimento.enabled = true; // Devolve o controle ao jogador
+        }
     }
 
     // ==================== SISTEMA DE MENU DE PAUSE (ESC) ====================

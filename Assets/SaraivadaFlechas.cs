@@ -12,6 +12,7 @@ public class SaraivadaFlechas : MonoBehaviour
     public float danoPorTick = 18f;
 
     private LineRenderer anelVisual;
+    private GameObject discoVisualChao;
     private float tempoFim;
     private float proximoTickDano;
     private Material matFlechasEspectrais;
@@ -30,14 +31,41 @@ public class SaraivadaFlechas : MonoBehaviour
         }
 
         CriarAnelTatico(litShader, corEspectral);
+        CriarDiscoChao(litShader, corEspectral);
     }
 
     void Start()
     {
+        // Garante que o transform da saraivada esteja perfeitamente colado no solo
+        AjustarParaSolo();
+
         tempoFim = Time.time + duracao;
         proximoTickDano = Time.time;
         StartCoroutine(RotinaChuvaDeFlechas());
         Destroy(gameObject, duracao + 0.5f);
+    }
+
+    void AjustarParaSolo()
+    {
+        RaycastHit[] hits = Physics.RaycastAll(transform.position + Vector3.up * 8f, Vector3.down, 40f);
+        float melhorY = float.MinValue;
+        bool achou = false;
+        foreach (var h in hits)
+        {
+            if (h.collider.isTrigger) continue;
+            if (h.collider.CompareTag("Player") || h.collider.GetComponentInParent<PlayerController>() != null) continue;
+            if (h.collider.GetComponentInParent<SistemaDeVida>() != null || h.collider.CompareTag("Enemy")) continue;
+
+            if (h.point.y > melhorY)
+            {
+                melhorY = h.point.y;
+                achou = true;
+            }
+        }
+        if (achou)
+        {
+            transform.position = new Vector3(transform.position.x, melhorY, transform.position.z);
+        }
     }
 
     void Update()
@@ -71,11 +99,16 @@ public class SaraivadaFlechas : MonoBehaviour
         anelVisual.useWorldSpace = false;
         anelVisual.loop = true;
         anelVisual.positionCount = 48;
-        anelVisual.startWidth = 0.18f;
-        anelVisual.endWidth = 0.18f;
+        anelVisual.startWidth = 0.24f;
+        anelVisual.endWidth = 0.24f;
 
         Material matLinha = new Material(shader);
         matLinha.color = cor;
+        if (matLinha.HasProperty("_EmissionColor"))
+        {
+            matLinha.EnableKeyword("_EMISSION");
+            matLinha.SetColor("_EmissionColor", cor * 1.5f);
+        }
         anelVisual.material = matLinha;
 
         for (int i = 0; i < 48; i++)
@@ -85,6 +118,38 @@ public class SaraivadaFlechas : MonoBehaviour
             float z = Mathf.Sin(angulo) * raioArea;
             anelVisual.SetPosition(i, new Vector3(x, 0f, z));
         }
+    }
+
+    void CriarDiscoChao(Shader shader, Color cor)
+    {
+        discoVisualChao = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        discoVisualChao.name = "DiscoChaoSaraivada";
+        discoVisualChao.transform.SetParent(transform, false);
+        discoVisualChao.transform.localPosition = new Vector3(0f, 0.02f, 0f);
+        discoVisualChao.transform.localScale = new Vector3(raioArea * 2f, 0.005f, raioArea * 2f);
+
+        Collider col = discoVisualChao.GetComponent<Collider>();
+        if (col != null) Destroy(col);
+
+        Renderer rend = discoVisualChao.GetComponent<Renderer>();
+        if (rend != null)
+        {
+            Material mat = new Material(shader);
+            Color corDisco = new Color(cor.r, cor.g, cor.b, 0.18f);
+            mat.color = corDisco;
+            if (mat.HasProperty("_EmissionColor"))
+            {
+                mat.EnableKeyword("_EMISSION");
+                mat.SetColor("_EmissionColor", cor * 0.35f);
+            }
+            rend.material = mat;
+        }
+
+        // Luz esmeralda ambiente no chão
+        Light luz = gameObject.AddComponent<Light>();
+        luz.color = cor;
+        luz.range = raioArea * 1.4f;
+        luz.intensity = 2.0f;
     }
 
     IEnumerator RotinaChuvaDeFlechas()
@@ -120,7 +185,7 @@ public class SaraivadaFlechas : MonoBehaviour
             rend.material = matFlechasEspectrais;
         }
 
-        Vector3 destino = new Vector3(origem.x + Random.Range(-0.5f, 0.5f), transform.position.y, origem.z + Random.Range(-0.5f, 0.5f));
+        Vector3 destino = new Vector3(origem.x + Random.Range(-0.5f, 0.5f), transform.position.y + 0.05f, origem.z + Random.Range(-0.5f, 0.5f));
         float velocidade = Random.Range(28f, 42f);
         float distanciaTotal = Vector3.Distance(origem, destino);
         float tempoQueda = distanciaTotal / velocidade;
@@ -153,9 +218,9 @@ public class SaraivadaFlechas : MonoBehaviour
             if (atingidos.Contains(root)) continue;
             atingidos.Add(root);
 
-            // Verifica altura dentro do cilindro (6 metros)
+            // Verifica altura dentro do cilindro (desde o piso até alturaCilindro)
             float deltaY = col.transform.position.y - transform.position.y;
-            if (deltaY < -1f || deltaY > alturaCilindro) continue;
+            if (deltaY < -1.5f || deltaY > alturaCilindro) continue;
 
             SistemaDeVida vida = col.GetComponent<SistemaDeVida>();
             if (vida == null) vida = col.GetComponentInParent<SistemaDeVida>();
